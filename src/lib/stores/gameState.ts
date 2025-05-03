@@ -12,10 +12,19 @@ export interface Card {
 	score: boolean;
 }
 
+export interface Player {
+    name: string;
+    id: string;
+    pickaxe: boolean;
+    cart: boolean;
+    lamp: boolean;
+}
+
 export interface GameState {
 	grid: (Card | null)[][];
 	selectedCard: Card | null;
 	currentPlayer: number;
+    players: Player[];
 }
 
 // Initial state
@@ -83,7 +92,13 @@ positions.forEach((pos, i) => {
 const initialState: GameState = {
 	grid: initialGrid,
 	selectedCard: null,
-	currentPlayer: 1
+	currentPlayer: 1,
+    players: [
+        { name: 'Player 1', id: 'a', pickaxe: true, cart: true, lamp: true },
+        { name: 'Player 2', id: 'b', pickaxe: true, cart: true, lamp: true },
+        { name: 'Player 3', id: 'c', pickaxe: true, cart: true, lamp: true },
+        { name: 'Player 4', id: 'd', pickaxe: true, cart: true, lamp: true }
+    ]
 };
 
 // Create the store
@@ -115,4 +130,14 @@ export const selectCard = (card: Card) => {
 		...state,
 		selectedCard: card
 	}));
+};
+
+export const nextTurn = () => {
+    gameState.update(state => {
+        const nextPlayer = (state.currentPlayer % state.players.length) + 1;
+        return {
+            ...state,
+            currentPlayer: nextPlayer
+        };
+    });
 };

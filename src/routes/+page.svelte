@@ -1,46 +1,17 @@
 <script lang="ts">
 	import { onMount, afterUpdate } from 'svelte';
 	import paper from 'paper';
-	import { gameState, type Card, placeCard, selectCard } from '$lib/stores/gameState';
+	import { gameState, type Card, placeCard, selectCard, nextTurn, type Player } from '$lib/stores/gameState';
 
 	let canvas: HTMLCanvasElement;
 	let cards: Card[];
 	let paperInitialized = false;
-	let currentPlayer = 'a';
 	let deck: Card[] = [];
-	let players = [
-		{
-			name: 'Player 1',
-			id: 'a',
-			pickaxe: true,
-			cart: true,
-			lamp: true
-		},
-		{
-			name: 'Player 2',
-			id: 'b',
-			pickaxe: true,
-			cart: true,
-			lamp: true
-		},
-		{
-			name: 'Player 3',
-			id: 'c',
-			pickaxe: true,
-			cart: true,
-			lamp: true
-		},
-		{
-			name: 'Player 4',
-			id: 'd',
-			pickaxe: true,
-			cart: true,
-			lamp: true
-		}
-	];
 
 	$: grid = $gameState.grid;
 	$: selectedCard = $gameState.selectedCard;
+	$: players = $gameState.players;
+	$: currentPlayer = $gameState.currentPlayer;
 
 	$: playablePositions = getPlayablePositions(grid, selectedCard);
 	$: console.log('Playable positions', playablePositions);
@@ -360,6 +331,7 @@
 							console.log('Placing card at', row, col);
 							placeCard(row, col, selectedCard);
 							cards = cards.filter((c) => c !== selectedCard);
+							nextTurn(); // Move to next player after placing a card
 							drawGrid();
 						} else {
 							console.log('Invalid position for card placement');
@@ -412,6 +384,7 @@
 		deckGroup.onClick = (event: paper.MouseEvent) => {
 			if (deck.length > 0) {
 				const newCards = drawCards(1);
+				nextTurn(); // Move to next player after drawing a card
 				drawGrid();
 			}
 		};
@@ -425,7 +398,7 @@
 			new paper.PointText({
 				point: [deckX - 60, playerY + toolSize],
 				content: player.name,
-				fillColor: player.id === currentPlayer ? 'blue' : 'black',
+				fillColor: (index + 1) === currentPlayer ? 'blue' : 'black',
 				fontSize: 14
 			});
 
@@ -444,7 +417,8 @@
 					point: [toolX, playerY],
 					size: [toolSize, toolSize],
 					strokeColor: 'black',
-					fillColor: tool.status ? '#90EE90' : '#FFB6C1'
+					fillColor: tool.status ? '#90EE90' : '#FFB6C1',
+					strokeWidth: (index + 1) === currentPlayer ? 2 : 1
 				});
 
 				// Tool label
@@ -452,7 +426,7 @@
 					point: [toolX + toolSize / 2, playerY + toolSize + 15],
 					content: tool.name,
 					justification: 'center',
-					fillColor: 'black',
+					fillColor: (index + 1) === currentPlayer ? 'blue' : 'black',
 					fontSize: 12
 				});
 			});
