@@ -7,22 +7,35 @@
 	let cards: Card[];
 	let paperInitialized = false;
 	let currentPlayer = 'a';
+	let deck: Card[] = [];
 	let players = [
 		{
 			name: 'Player 1',
-			id: 'a'
+			id: 'a',
+			pickaxe: true,
+			cart: true,
+			lamp: true
 		},
 		{
 			name: 'Player 2',
-			id: 'b'
+			id: 'b',
+			pickaxe: true,
+			cart: true,
+			lamp: true
 		},
 		{
 			name: 'Player 3',
-			id: 'c'
+			id: 'c',
+			pickaxe: true,
+			cart: true,
+			lamp: true
 		},
 		{
 			name: 'Player 4',
-			id: 'd'
+			id: 'd',
+			pickaxe: true,
+			cart: true,
+			lamp: true
 		}
 	];
 
@@ -36,6 +49,49 @@
 		}
 	});
 
+	const SCORE_CARDS = {
+		1: 16,
+		2: 8,
+		3: 4
+	};
+
+	const PLAYER_SETUP = {
+		3: {
+			saboteur: 1,
+			miner: 3
+		},
+		4: {
+			saboteur: 1,
+			miner: 4
+		},
+		5: {
+			saboteur: 2,
+			miner: 4
+		},
+		6: {
+			saboteur: 2,
+			miner: 5
+		},
+		7: {
+			saboteur: 3,
+			miner: 5
+		},
+		8: {
+			saboteur: 3,
+			miner: 6
+		},
+		9: {
+			saboteur: 3,
+			miner: 7
+		},
+		10: {
+			saboteur: 3,
+			miner: 8
+		}
+	};
+
+	const STARTING_HAND_SIZE = 5;
+
 	const CARD_COUNT = {
 		elbow: 5,
 		elbow_reverse: 5,
@@ -47,9 +103,7 @@
 		end_bottom: 1,
 		end_side: 1,
 		end_elbow: 1,
-		end_elbow_reverse: 1,
-		gold: 1,
-		coal: 2
+		end_elbow_reverse: 1
 	};
 
 	const CARD_TYPES: Record<string, Card> = {
@@ -199,6 +253,20 @@
 		}
 	};
 
+	function rotateCard(card: Card) {
+		// cards can only be rotated 180 degrees
+		const newCard = { ...card };
+		newCard.n = card.s;
+		newCard.s = card.n;
+		newCard.e = card.w;
+		newCard.w = card.e;
+		return newCard;
+	}
+
+	function rotateHand(cards: Card[]) {
+		return cards.map((card) => rotateCard(card));
+	}
+
 	function drawGrid() {
 		if (!paper.project) return;
 
@@ -238,15 +306,119 @@
 			}
 		}
 
+		// Draw deck
+		const deckX = startX + 8 * cellSize;
+		const deckY = startY;
+		const deckGroup = new paper.Group();
+
+		// Draw multiple rectangles to create a deck effect
+		for (let i = 0; i < 3; i++) {
+			const offset = i * 2;
+			new paper.Path.Rectangle({
+				point: [deckX + offset, deckY - offset],
+				size: [cellSize, cellSize],
+				strokeColor: 'black',
+				fillColor: '#e8e8e8',
+				parent: deckGroup
+			});
+		}
+
+		// Draw top card of the deck
+		const deckTop = new paper.Path.Rectangle({
+			point: [deckX + 4, deckY - 4],
+			size: [cellSize, cellSize],
+			strokeColor: 'black',
+			fillColor: 'white',
+			parent: deckGroup
+		});
+
+		// Add card back pattern
+		new paper.Path.Circle({
+			center: [deckX + 4 + cellSize / 2, deckY - 4 + cellSize / 2],
+			radius: cellSize / 4,
+			strokeColor: '#666',
+			fillColor: null,
+			parent: deckGroup
+		});
+
+		// Add deck size text
+		new paper.PointText({
+			point: [deckX + 4 + cellSize / 2, deckY - 4 - 10],
+			content: `${deck.length}`,
+			justification: 'center',
+			fillColor: 'black',
+			fontSize: 14,
+			parent: deckGroup
+		});
+
+		// Add click handler for drawing a card
+		deckGroup.onClick = (event: paper.MouseEvent) => {
+			if (deck.length > 0) {
+				const newCards = drawCards(1);
+				drawGrid();
+			}
+		};
+
 		// Draw available cards
 		const cardY = startY + 8 * cellSize;
+		const maxCardsPerRow = 7;
+		const cardPadding = 10; // Add padding between cards in hand
+
+		// Add rotation button
+		const rotateButtonSize = 40;
+		const rotateButton = new paper.Path.Rectangle({
+			point: [startX - rotateButtonSize - 10, cardY],
+			size: [rotateButtonSize, rotateButtonSize],
+			strokeColor: 'black',
+			fillColor: '#e0e0e0',
+			radius: 5
+		});
+
+		// Add rotation arrow symbol
+		const arrowSize = rotateButtonSize * 0.6;
+		const arrowCenter = new paper.Point(
+			startX - rotateButtonSize / 2 - 10,
+			cardY + rotateButtonSize / 2
+		);
+
+		const arrow = new paper.Path.Circle({
+			center: arrowCenter,
+			radius: arrowSize / 2,
+			strokeColor: 'black',
+			fillColor: null,
+			strokeWidth: 2
+		});
+
+		// Add arrowhead
+		const arrowhead = new paper.Path({
+			segments: [
+				[arrowCenter.x + arrowSize / 2, arrowCenter.y],
+				[arrowCenter.x + arrowSize / 2 + 8, arrowCenter.y - 8],
+				[arrowCenter.x + arrowSize / 2 + 8, arrowCenter.y + 8]
+			],
+			fillColor: 'black',
+			closed: true
+		});
+
+		// Group the button elements
+		const rotateButtonGroup = new paper.Group([rotateButton, arrow, arrowhead]);
+
+		// Add click handler for rotation
+		rotateButtonGroup.onClick = (event: paper.MouseEvent) => {
+			cards = rotateHand(cards);
+			drawGrid();
+		};
+
 		cards.forEach((card, index) => {
-			const x = startX + index * cellSize;
+			const row = Math.floor(index / maxCardsPerRow);
+			const col = index % maxCardsPerRow;
+			const x = startX + col * (cellSize + cardPadding);
+			const y = cardY + row * (cellSize + cardPadding);
 			const cardGroup = new paper.Group();
 
 			// Draw card background
 			const rect = new paper.Path.Rectangle({
-				point: [x, cardY],
+				point: [x, y],
 				size: [cellSize, cellSize],
 				strokeColor: 'black',
 				fillColor: card === selectedCard ? '#e0e0ff' : 'white'
@@ -254,7 +426,7 @@
 			cardGroup.addChild(rect);
 
 			// Draw card paths
-			drawCard(x, cardY, cellSize, card, cardGroup);
+			drawCard(x, y, cellSize, card, cardGroup);
 
 			// Add click handler for card selection
 			cardGroup.onClick = (event: paper.MouseEvent) => {
@@ -357,33 +529,36 @@
 		return path;
 	}
 
-	onMount(() => {
-		cards = [
-			CARD_TYPES.elbow,
-			CARD_TYPES.elbow_reverse,
-			CARD_TYPES.t_bottom,
-			CARD_TYPES.t_side,
-			CARD_TYPES.streight_forward,
-			CARD_TYPES.streight_side,
-			CARD_TYPES.cross,
-			CARD_TYPES.end_bottom,
-			CARD_TYPES.end_side,
-			CARD_TYPES.end_elbow,
-			CARD_TYPES.end_elbow_reverse,
-			CARD_TYPES.streight_forward_dead,
-			CARD_TYPES.streight_side_dead,
-			CARD_TYPES.t_bottom_dead,
-			CARD_TYPES.t_side_dead,
-			CARD_TYPES.cross_dead
-		];
+	function fillDeck() {
+		// Create deck from card types and counts, then shuffle
+		const unshuffledDeck = Object.entries(CARD_COUNT).flatMap(([type, count]) =>
+			Array(count)
+				.fill(null)
+				.map(() => ({ ...CARD_TYPES[type] }))
+		);
 
+		// Fisher-Yates shuffle algorithm
+		deck = [...unshuffledDeck];
+		for (let i = deck.length - 1; i > 0; i--) {
+			const j = Math.floor(Math.random() * (i + 1));
+			[deck[i], deck[j]] = [deck[j], deck[i]];
+		}
+	}
+
+	function drawCards(count: number) {
+		const drawnCards = deck.splice(0, count);
+		cards = [...(cards || []), ...drawnCards];
+		return drawnCards;
+	}
+
+	onMount(() => {
 		paper.setup(canvas);
 		paperInitialized = true;
-		drawGrid();
 
-		return () => {
-			paper.project.clear();
-		};
+		// Initialize the deck and draw starting hands
+		fillDeck();
+		cards = drawCards(STARTING_HAND_SIZE);
+		drawGrid();
 	});
 </script>
 
