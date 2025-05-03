@@ -409,23 +409,6 @@
 			parent: deckGroup
 		});
 
-		players.forEach((player, index) => {
-			const playerY = deckY + (index + 1.5) * cellSize;
-			const playerCard = new paper.Path.Rectangle({
-				point: [deckX, playerY],
-				size: [cellSize, cellSize],
-				strokeColor: 'black',
-				fillColor: player.id === currentPlayer ? '#e0e0ff' : 'white'
-			});
-
-			new paper.PointText({
-				point: [deckX + cellSize + 10, playerY + cellSize/2],
-				content: player.name,
-				fillColor: player.id === currentPlayer ? 'blue' : 'black',
-				fontSize: 14
-			});
-		});
-
 		deckGroup.onClick = (event: paper.MouseEvent) => {
 			if (deck.length > 0) {
 				const newCards = drawCards(1);
@@ -433,8 +416,50 @@
 			}
 		};
 
+		players.forEach((player, index) => {
+			const playerY = deckY + (index + 1.5) * cellSize;
+			const toolSize = cellSize / 2;
+			const spacing = 10;
+
+			// Player name
+			new paper.PointText({
+				point: [deckX - 60, playerY + toolSize],
+				content: player.name,
+				fillColor: player.id === currentPlayer ? 'blue' : 'black',
+				fontSize: 14
+			});
+
+			// Draw tool squares
+			const tools = [
+				{ name: 'Cart', status: player.cart },
+				{ name: 'Lamp', status: player.lamp },
+				{ name: 'Pickaxe', status: player.pickaxe }
+			];
+
+			tools.forEach((tool, toolIndex) => {
+				const toolX = deckX + toolIndex * (toolSize + spacing);
+
+				// Tool square
+				new paper.Path.Rectangle({
+					point: [toolX, playerY],
+					size: [toolSize, toolSize],
+					strokeColor: 'black',
+					fillColor: tool.status ? '#90EE90' : '#FFB6C1'
+				});
+
+				// Tool label
+				new paper.PointText({
+					point: [toolX + toolSize / 2, playerY + toolSize + 15],
+					content: tool.name,
+					justification: 'center',
+					fillColor: 'black',
+					fontSize: 12
+				});
+			});
+		});
+
 		const cardY = startY + 8 * cellSize;
-		const maxCardsPerRow = 7;
+		const maxCardsPerRow = 6;
 		const cardPadding = 10;
 
 		const rotateButtonSize = 40;
