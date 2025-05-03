@@ -42,6 +42,8 @@
 	$: grid = $gameState.grid;
 	$: selectedCard = $gameState.selectedCard;
 
+	$: playablePositions = getPlayablePositions(grid, selectedCard);
+	$: console.log('Playable positions', playablePositions);
 	afterUpdate(() => {
 		if (paperInitialized) {
 			console.log('Redrawing after update');
@@ -254,7 +256,6 @@
 	};
 
 	function rotateCard(card: Card) {
-		// cards can only be rotated 180 degrees
 		const newCard = { ...card };
 		newCard.n = card.s;
 		newCard.s = card.n;
@@ -276,13 +277,11 @@
 		const startX = 100;
 		const startY = 100;
 
-		// Draw grid cells and cards
 		for (let row = 0; row < 7; row++) {
 			for (let col = 0; col < 7; col++) {
 				const x = startX + col * cellSize;
 				const y = startY + row * cellSize;
 
-				// Draw cell border with hover effect
 				const rect = new paper.Path.Rectangle({
 					point: [x, y],
 					size: [cellSize, cellSize],
@@ -290,13 +289,11 @@
 					fillColor: 'white'
 				});
 
-				// Draw card if exists
 				const card = grid[row][col];
 				if (card) {
 					drawCard(x, y, cellSize, card);
 				}
 
-				// Add click handler for cell
 				rect.onClick = (event: paper.MouseEvent) => {
 					if (selectedCard) {
 						console.log('Placing card at', row, col);
@@ -306,12 +303,10 @@
 			}
 		}
 
-		// Draw deck
 		const deckX = startX + 8 * cellSize;
 		const deckY = startY;
 		const deckGroup = new paper.Group();
 
-		// Draw multiple rectangles to create a deck effect
 		for (let i = 0; i < 3; i++) {
 			const offset = i * 2;
 			new paper.Path.Rectangle({
@@ -323,7 +318,6 @@
 			});
 		}
 
-		// Draw top card of the deck
 		const deckTop = new paper.Path.Rectangle({
 			point: [deckX + 4, deckY - 4],
 			size: [cellSize, cellSize],
@@ -332,7 +326,6 @@
 			parent: deckGroup
 		});
 
-		// Add card back pattern
 		new paper.Path.Circle({
 			center: [deckX + 4 + cellSize / 2, deckY - 4 + cellSize / 2],
 			radius: cellSize / 4,
@@ -341,7 +334,6 @@
 			parent: deckGroup
 		});
 
-		// Add deck size text
 		new paper.PointText({
 			point: [deckX + 4 + cellSize / 2, deckY - 4 - 10],
 			content: `${deck.length}`,
@@ -351,7 +343,6 @@
 			parent: deckGroup
 		});
 
-		// Add click handler for drawing a card
 		deckGroup.onClick = (event: paper.MouseEvent) => {
 			if (deck.length > 0) {
 				const newCards = drawCards(1);
@@ -359,12 +350,10 @@
 			}
 		};
 
-		// Draw available cards
 		const cardY = startY + 8 * cellSize;
 		const maxCardsPerRow = 7;
-		const cardPadding = 10; // Add padding between cards in hand
+		const cardPadding = 10;
 
-		// Add rotation button
 		const rotateButtonSize = 40;
 		const rotateButton = new paper.Path.Rectangle({
 			point: [startX - rotateButtonSize - 10, cardY],
@@ -374,7 +363,6 @@
 			radius: 5
 		});
 
-		// Add rotation arrow symbol
 		const arrowSize = rotateButtonSize * 0.6;
 		const arrowCenter = new paper.Point(
 			startX - rotateButtonSize / 2 - 10,
@@ -389,7 +377,6 @@
 			strokeWidth: 2
 		});
 
-		// Add arrowhead
 		const arrowhead = new paper.Path({
 			segments: [
 				[arrowCenter.x + arrowSize / 2, arrowCenter.y],
@@ -400,10 +387,8 @@
 			closed: true
 		});
 
-		// Group the button elements
 		const rotateButtonGroup = new paper.Group([rotateButton, arrow, arrowhead]);
 
-		// Add click handler for rotation
 		rotateButtonGroup.onClick = (event: paper.MouseEvent) => {
 			cards = rotateHand(cards);
 			drawGrid();
@@ -416,7 +401,6 @@
 			const y = cardY + row * (cellSize + cardPadding);
 			const cardGroup = new paper.Group();
 
-			// Draw card background
 			const rect = new paper.Path.Rectangle({
 				point: [x, y],
 				size: [cellSize, cellSize],
@@ -425,10 +409,8 @@
 			});
 			cardGroup.addChild(rect);
 
-			// Draw card paths
 			drawCard(x, y, cellSize, card, cardGroup);
 
-			// Add click handler for card selection
 			cardGroup.onClick = (event: paper.MouseEvent) => {
 				console.log('Selecting card', card.name);
 				selectCard(card);
@@ -442,23 +424,20 @@
 		const paths: paper.Path[] = [];
 		const center = new paper.Point(x + size / 2, y + size / 2);
 
-		// Adjust angles to be 90 degrees counter-clockwise
-		if (card.n) paths.push(drawPath(center, 270, size, card.deadEnd, card.name)); // was 0
-		if (card.e) paths.push(drawPath(center, 0, size, card.deadEnd, card.name)); // was 90
-		if (card.s) paths.push(drawPath(center, 90, size, card.deadEnd, card.name)); // was 180
-		if (card.w) paths.push(drawPath(center, 180, size, card.deadEnd, card.name)); // was 270
+		if (card.n) paths.push(drawPath(center, 270, size, card.deadEnd, card.name));
+		if (card.e) paths.push(drawPath(center, 0, size, card.deadEnd, card.name));
+		if (card.s) paths.push(drawPath(center, 90, size, card.deadEnd, card.name));
+		if (card.w) paths.push(drawPath(center, 180, size, card.deadEnd, card.name));
 
 		if (group) {
 			paths.forEach((path) => group.addChild(path));
 		} else {
-			// Make special cards more prominent
 			let strokeWidth = 3;
 			if (card.name === 'cross') strokeWidth = 4;
 			if (card.name === 'gold') strokeWidth = 5;
 			paths.forEach((path) => (path.strokeWidth = strokeWidth));
 		}
 
-		// Add goal indicators
 		if (!group) {
 			if (card.name === 'gold') {
 				const circle = new paper.Path.Circle({
@@ -499,14 +478,12 @@
 		let end;
 
 		if (isDeadEnd) {
-			// For dead ends, only draw 1/3 of the way from the edge
 			end = center.add(
 				new paper.Point({
 					length: size / 6,
 					angle: angle
 				})
 			);
-			// Move the start point to the edge
 			const edgeStart = center.add(
 				new paper.Point({
 					length: size / 2,
@@ -530,14 +507,12 @@
 	}
 
 	function fillDeck() {
-		// Create deck from card types and counts, then shuffle
 		const unshuffledDeck = Object.entries(CARD_COUNT).flatMap(([type, count]) =>
 			Array(count)
 				.fill(null)
 				.map(() => ({ ...CARD_TYPES[type] }))
 		);
 
-		// Fisher-Yates shuffle algorithm
 		deck = [...unshuffledDeck];
 		for (let i = deck.length - 1; i > 0; i--) {
 			const j = Math.floor(Math.random() * (i + 1));
@@ -551,11 +526,74 @@
 		return drawnCards;
 	}
 
+	function compareRouteCards(cardA: Card, cardB: Card) {
+		if (cardA.n && cardB.s) return true;
+		if (cardA.s && cardB.n) return true;
+		if (cardA.e && cardB.w) return true;
+		if (cardA.w && cardB.e) return true;
+		return false;
+	}
+
+	function getPlayablePositions(existingCards: (Card | null)[][], activeCard: Card | null) {
+		if (!activeCard) return [];
+
+		const playablePositions: { row: number; col: number }[] = [];
+
+		for (let row = 0; row < existingCards.length; row++) {
+			for (let col = 0; col < existingCards[row].length; col++) {
+				if (existingCards[row][col]) continue;
+
+				let canPlace = false;
+
+				if (
+					row > 0 &&
+					existingCards[row - 1][col] &&
+					activeCard.n &&
+					existingCards[row - 1][col]!.s
+				) {
+					canPlace = true;
+				}
+
+				if (
+					row < existingCards.length - 1 &&
+					existingCards[row + 1][col] &&
+					activeCard.s &&
+					existingCards[row + 1][col]!.n
+				) {
+					canPlace = true;
+				}
+
+				if (
+					col < existingCards[row].length - 1 &&
+					existingCards[row][col + 1] &&
+					activeCard.e &&
+					existingCards[row][col + 1]!.w
+				) {
+					canPlace = true;
+				}
+
+				if (
+					col > 0 &&
+					existingCards[row][col - 1] &&
+					activeCard.w &&
+					existingCards[row][col - 1]!.e
+				) {
+					canPlace = true;
+				}
+
+				if (canPlace) {
+					playablePositions.push({ row, col });
+				}
+			}
+		}
+
+		return playablePositions;
+	}
+
 	onMount(() => {
 		paper.setup(canvas);
 		paperInitialized = true;
 
-		// Initialize the deck and draw starting hands
 		fillDeck();
 		cards = drawCards(STARTING_HAND_SIZE);
 		drawGrid();
