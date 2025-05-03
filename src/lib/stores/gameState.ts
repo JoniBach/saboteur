@@ -33,6 +33,17 @@ export interface GameState {
 	scoreCardDeck: number[];
 }
 
+export interface ToolCard {
+	pickaxe: boolean;
+	cart: boolean;
+	lamp: boolean;
+}
+
+export interface ActionCard {
+	type: 'damage' | 'repair' | 'cavein' | 'map';
+	tool?: ToolCard | undefined; // required for damage and repair
+}
+
 export const ROUND_COUNT = 3;
 
 // Score card deck configuration
@@ -42,21 +53,18 @@ export const SCORE_CARD_TYPES = {
 	three: { value: 3, count: 4 }
 };
 
-// Create and shuffle score card deck
-export const createScoreCardDeck = () => {
-	const deck: number[] = [];
-	Object.entries(SCORE_CARD_TYPES).forEach(([, card]) => {
-		for (let i = 0; i < card.count; i++) {
-			deck.push(card.value);
-		}
-	});
-
-	// Shuffle the deck
-	for (let i = deck.length - 1; i > 0; i--) {
-		const j = Math.floor(Math.random() * (i + 1));
-		[deck[i], deck[j]] = [deck[j], deck[i]];
-	}
-	return deck;
+export const ACTION_CARD = {
+	damage_pickaxe: 3,
+	damage_cart: 3,
+	damage_lamp: 3,
+	repair_pickaxe: 2,
+	repair_cart: 2,
+	repair_lamp: 2,
+	repair_lamp_or_cart: 2,
+	repair_pickaxe_or_lamp: 2,
+	repair_pickaxe_or_cart: 2,
+	cavein: 3,
+	map: 6
 };
 
 // Helper function to deal score cards to winners
@@ -316,29 +324,45 @@ export const CARD_TYPES: Record<string, Card> = {
 		valid: true,
 		destination: false,
 		score: false
-	},
-	gold: {
-		n: false,
-		s: true,
-		e: false,
-		w: false,
-		name: 'gold',
-		deadEnd: true,
-		valid: false,
-		destination: true,
-		score: true
-	},
-	coal: {
-		n: false,
-		s: true,
-		e: false,
-		w: false,
-		name: 'coal',
-		deadEnd: true,
-		valid: false,
-		destination: true,
-		score: false
 	}
+};
+
+// Create and shuffle action card deck
+export const createActionCardDeck = () => {
+	const deck: ActionCard[] = [];
+	Object.entries(ACTION_CARD).forEach(([type, count]) => {
+		for (let i = 0; i < count; i++) {
+			deck.push({
+				type: type as ActionCard['type'],
+				tool: type.includes('_') ? { [type.split('_')[1]]: true } : undefined
+			});
+		}
+	});
+
+	// Shuffle the deck
+	for (let i = deck.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1));
+		[deck[i], deck[j]] = [deck[j], deck[i]];
+	}
+
+	return deck;
+};
+
+// Create and shuffle score card deck
+export const createScoreCardDeck = () => {
+	const deck: number[] = [];
+	Object.entries(SCORE_CARD_TYPES).forEach(([, card]) => {
+		for (let i = 0; i < card.count; i++) {
+			deck.push(card.value);
+		}
+	});
+
+	// Shuffle the deck
+	for (let i = deck.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1));
+		[deck[i], deck[j]] = [deck[j], deck[i]];
+	}
+	return deck;
 };
 
 // Create and shuffle path cards deck
