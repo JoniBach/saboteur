@@ -18,6 +18,7 @@ export interface Player {
     pickaxe: boolean;
     cart: boolean;
     lamp: boolean;
+    hand: Card[];
 }
 
 export interface GameState {
@@ -94,10 +95,10 @@ const initialState: GameState = {
 	selectedCard: null,
 	currentPlayer: 1,
     players: [
-        { name: 'Player 1', id: 'a', pickaxe: true, cart: true, lamp: true },
-        { name: 'Player 2', id: 'b', pickaxe: true, cart: true, lamp: true },
-        { name: 'Player 3', id: 'c', pickaxe: true, cart: true, lamp: true },
-        { name: 'Player 4', id: 'd', pickaxe: true, cart: true, lamp: true }
+        { name: 'Player 1', id: 'a', pickaxe: true, cart: true, lamp: true, hand: [] },
+        { name: 'Player 2', id: 'b', pickaxe: true, cart: true, lamp: true, hand: [] },
+        { name: 'Player 3', id: 'c', pickaxe: true, cart: true, lamp: true, hand: [] },
+        { name: 'Player 4', id: 'd', pickaxe: true, cart: true, lamp: true, hand: [] }
     ]
 };
 
@@ -138,6 +139,45 @@ export const nextTurn = () => {
         return {
             ...state,
             currentPlayer: nextPlayer
+        };
+    });
+};
+
+export const drawCard = () => {
+    gameState.update(state => {
+        const currentPlayerIndex = state.currentPlayer - 1;
+        const player = state.players[currentPlayerIndex];
+        if (!player) return state;
+
+        return {
+            ...state,
+            players: state.players.map((p, i) => {
+                if (i === currentPlayerIndex) {
+                    return {
+                        ...p,
+                        hand: [...p.hand]
+                    };
+                }
+                return p;
+            })
+        };
+    });
+};
+
+export const removeCardFromHand = (card: Card) => {
+    gameState.update(state => {
+        const currentPlayerIndex = state.currentPlayer - 1;
+        return {
+            ...state,
+            players: state.players.map((p, i) => {
+                if (i === currentPlayerIndex) {
+                    return {
+                        ...p,
+                        hand: p.hand.filter(c => c !== card)
+                    };
+                }
+                return p;
+            })
         };
     });
 };

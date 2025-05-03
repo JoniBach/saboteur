@@ -1,10 +1,9 @@
 <script lang="ts">
 	import { onMount, afterUpdate } from 'svelte';
 	import paper from 'paper';
-	import { gameState, type Card, placeCard, selectCard, nextTurn, type Player } from '$lib/stores/gameState';
+	import { gameState, type Card, placeCard, selectCard, nextTurn, drawCard, removeCardFromHand } from '$lib/stores/gameState';
 
 	let canvas: HTMLCanvasElement;
-	let cards: Card[];
 	let paperInitialized = false;
 	let deck: Card[] = [];
 
@@ -12,6 +11,7 @@
 	$: selectedCard = $gameState.selectedCard;
 	$: players = $gameState.players;
 	$: currentPlayer = $gameState.currentPlayer;
+	$: currentPlayerHand = $gameState.players[currentPlayer - 1]?.hand || [];
 
 	$: playablePositions = getPlayablePositions(grid, selectedCard);
 	$: console.log('Playable positions', playablePositions);
@@ -289,8 +289,27 @@
 		return newCard;
 	}
 
-	function rotateHand(cards: Card[]) {
-		return cards.map((card) => rotateCard(card));
+	function rotateHand() {
+		gameState.update(state => {
+			const currentPlayerIndex = state.currentPlayer - 1;
+			const player = state.players[currentPlayerIndex];
+			if (!player) return state;
+
+			const rotatedHand = [...player.hand];
+			if (rotatedHand.length > 0) {
+				const lastCard = rotatedHand.pop()!;
+				rotatedHand.unshift(lastCard);
+			}
+
+			return {
+				...state,
+				players: state.players.map((p, i) => 
+					i === currentPlayerIndex 
+						? { ...p, hand: rotatedHand }
+						: p
+				)
+			};
+		});
 	}
 
 	function drawGrid() {
@@ -319,7 +338,7 @@
 
 				const card = grid[row][col];
 				if (card) {
-					drawCard(x, y, cellSize, card);
+					renderCard(x, y, cellSize, card);
 				}
 
 				rect.onClick = (event: paper.MouseEvent) => {
@@ -330,8 +349,8 @@
 						if (isValidPosition) {
 							console.log('Placing card at', row, col);
 							placeCard(row, col, selectedCard);
-							cards = cards.filter((c) => c !== selectedCard);
-							nextTurn(); // Move to next player after placing a card
+							removeLocalCardFromHand(selectedCard);
+							nextTurn();
 							drawGrid();
 						} else {
 							console.log('Invalid position for card placement');
@@ -383,9 +402,11 @@
 
 		deckGroup.onClick = (event: paper.MouseEvent) => {
 			if (deck.length > 0) {
-				const newCards = drawCards(1);
-				nextTurn(); // Move to next player after drawing a card
-				drawGrid();
+				const drawnCard = drawLocalCard();
+				if (drawnCard) {
+					nextTurn();
+					drawGrid();
+				}
 			}
 		};
 
@@ -472,11 +493,11 @@
 		const rotateButtonGroup = new paper.Group([rotateButton, arrow, arrowhead]);
 
 		rotateButtonGroup.onClick = (event: paper.MouseEvent) => {
-			cards = rotateHand(cards);
+			rotateHand();
 			drawGrid();
 		};
 
-		cards.forEach((card, index) => {
+		currentPlayerHand.forEach((card, index) => {
 			const row = Math.floor(index / maxCardsPerRow);
 			const col = index % maxCardsPerRow;
 			const x = startX + col * (cellSize + cardPadding);
@@ -491,7 +512,7 @@
 			});
 			cardGroup.addChild(rect);
 
-			drawCard(x, y, cellSize, card, cardGroup);
+			renderCard(x, y, cellSize, card, cardGroup);
 
 			cardGroup.onClick = (event: paper.MouseEvent) => {
 				console.log('Selecting card', card.name);
@@ -502,7 +523,7 @@
 		paper.view.update();
 	}
 
-	function drawCard(x: number, y: number, size: number, card: Card, group?: paper.Group) {
+	function renderCard(x: number, y: number, size: number, card: Card, group?: paper.Group) {
 		const paths: paper.Path[] = [];
 		const center = new paper.Point(x + size / 2, y + size / 2);
 
@@ -602,10 +623,30 @@
 		}
 	}
 
-	function drawCards(count: number) {
-		const drawnCards = deck.splice(0, count);
-		cards = [...(cards || []), ...drawnCards];
-		return drawnCards;
+	function drawLocalCard() {
+		const drawnCard = deck.shift();
+		if (!drawnCard) return null;
+		
+		gameState.update(state => ({
+			...state,
+			players: state.players.map((p, index) => 
+				index === currentPlayer - 1 
+					? { ...p, hand: [...p.hand, drawnCard] }
+					: p
+			)
+		}));
+		return drawnCard;
+	}
+
+	function removeLocalCardFromHand(card: Card) {
+		gameState.update(state => ({
+			...state,
+			players: state.players.map((p, index) => 
+				index === currentPlayer - 1 
+					? { ...p, hand: p.hand.filter(c => c !== card) }
+					: p
+			)
+		}));
 	}
 
 	function compareRouteCards(cardA: Card, cardB: Card) {
@@ -681,7 +722,24 @@
 		paperInitialized = true;
 
 		fillDeck();
-		cards = drawCards(STARTING_HAND_SIZE);
+		
+		// Deal initial cards to all players
+		for (let i = 0; i < STARTING_HAND_SIZE; i++) {
+			players.forEach((_, playerIndex) => {
+				const drawnCard = deck.shift();
+				if (drawnCard) {
+					gameState.update(state => ({
+						...state,
+						players: state.players.map((p, index) => 
+							index === playerIndex 
+								? { ...p, hand: [...p.hand, drawnCard] }
+								: p
+						)
+					}));
+				}
+			});
+		}
+		
 		drawGrid();
 	});
 </script>
