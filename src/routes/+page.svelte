@@ -11,7 +11,8 @@
 		removeCardFromHand,
 		CARD_COUNT,
 		CARD_TYPES,
-		STARTING_HAND_SIZE
+		STARTING_HAND_SIZE,
+		initializeGame
 	} from '$lib/stores/gameState';
 
 	let canvas: HTMLCanvasElement;
@@ -468,6 +469,8 @@
 		paper.setup(canvas);
 		paperInitialized = true;
 
+		// Initialize game with 4 players (or any other number from 3-10)
+		initializeGame(4);
 		fillDeck();
 
 		// Deal initial cards to all players
@@ -493,3 +496,79 @@
 	bind:this={canvas}
 	style="width: 100%; max-width: 1200px; height: 1000px; background: #f0f0f0;"
 ></canvas>
+
+<div class="player-tools">
+	{#each players as player, i}
+		<div class="player {currentPlayer === i + 1 ? 'active' : ''}">
+			<div class="player-info">
+				<span class="player-name">{player.name}</span>
+				<span class="player-role">{player.role}</span>
+			</div>
+			<div class="tools">
+				<div class="tool {player.pickaxe ? 'active' : ''}">⛏️</div>
+				<div class="tool {player.cart ? 'active' : ''}">🛒</div>
+				<div class="tool {player.lamp ? 'active' : ''}">🔦</div>
+			</div>
+		</div>
+	{/each}
+</div>
+
+<style>
+	.player-tools {
+		position: fixed;
+		right: 20px;
+		top: 20px;
+		background: rgba(255, 255, 255, 0.9);
+		padding: 10px;
+		border-radius: 8px;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+	}
+
+	.player {
+		margin-bottom: 10px;
+		padding: 8px;
+		border-radius: 4px;
+		border: 1px solid #ddd;
+	}
+
+	.player.active {
+		background: #e0f7fa;
+		border-color: #00bcd4;
+	}
+
+	.player-info {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 5px;
+	}
+
+	.player-name {
+		font-weight: bold;
+	}
+
+	.player-role {
+		font-size: 0.9em;
+		padding: 2px 6px;
+		border-radius: 4px;
+		background: #f0f0f0;
+		text-transform: capitalize;
+	}
+
+	.tools {
+		display: flex;
+		gap: 8px;
+	}
+
+	.tool {
+		padding: 4px;
+		border-radius: 4px;
+		background: #f0f0f0;
+		opacity: 0.5;
+	}
+
+	.tool.active {
+		opacity: 1;
+		background: #e0f7fa;
+	}
+</style>

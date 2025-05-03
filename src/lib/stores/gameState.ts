@@ -19,6 +19,7 @@ export interface Player {
 	cart: boolean;
 	lamp: boolean;
 	hand: Card[];
+	role: 'saboteur' | 'miner';
 }
 
 export interface GameState {
@@ -348,20 +349,73 @@ positions.forEach((pos, i) => {
 	initialGrid[pos[0]][pos[1]] = card;
 });
 
+// Helper function to assign roles based on player count
+function assignRoles(playerCount: number): ('saboteur' | 'miner')[] {
+    const setup = PLAYER_SETUP[playerCount as keyof typeof PLAYER_SETUP];
+    if (!setup) {
+        throw new Error(`Invalid player count: ${playerCount}`);
+    }
+
+    const roles: ('saboteur' | 'miner')[] = [];
+    // Add saboteurs
+    for (let i = 0; i < setup.saboteur; i++) {
+        roles.push('saboteur');
+    }
+    // Add miners
+    for (let i = 0; i < setup.miner; i++) {
+        roles.push('miner');
+    }
+    
+    // Shuffle the roles array
+    for (let i = roles.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [roles[i], roles[j]] = [roles[j], roles[i]];
+    }
+    
+    return roles;
+}
+
 const initialState: GameState = {
-	grid: initialGrid,
-	selectedCard: null,
-	currentPlayer: 1,
-	players: [
-		{ name: 'Player 1', id: 'a', pickaxe: true, cart: true, lamp: true, hand: [] },
-		{ name: 'Player 2', id: 'b', pickaxe: true, cart: true, lamp: true, hand: [] },
-		{ name: 'Player 3', id: 'c', pickaxe: true, cart: true, lamp: true, hand: [] },
-		{ name: 'Player 4', id: 'd', pickaxe: true, cart: true, lamp: true, hand: [] }
-	]
+    grid: initialGrid,
+    selectedCard: null,
+    currentPlayer: 1,
+    players: [
+        {
+            name: 'Player 1',
+            id: '1',
+            pickaxe: true,
+            cart: true,
+            lamp: true,
+            hand: [],
+            role: 'miner' // Will be assigned properly when game starts
+        }
+    ]
 };
 
 // Create the store
 export const gameState = writable<GameState>(initialState);
+
+// Initialize game with players and assign roles
+export function initializeGame(playerCount: number) {
+    const roles = assignRoles(playerCount);
+    
+    gameState.update(state => {
+        const players = Array.from({ length: playerCount }, (_, i) => ({
+            name: `Player ${i + 1}`,
+            id: (i + 1).toString(),
+            pickaxe: true,
+            cart: true,
+            lamp: true,
+            hand: [],
+            role: roles[i]
+        }));
+        
+        return {
+            ...state,
+            players
+        };
+    });
+}
 
 // Game actions
 export const placeCard = (row: number, col: number, card: Card) => {
