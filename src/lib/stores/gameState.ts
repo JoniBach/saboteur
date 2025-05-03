@@ -695,23 +695,23 @@ export const removeCardFromHand = (card: Card) => {
 // Check if path connects to destination and update scores
 export function checkPathAndScore() {
 	gameState.update((state: GameState) => {
-		// Implement path checking logic here to determine if path connects to gold or coal
-		const pathConnectsToGold = checkPathToDestination(state.grid, 'gold');
-		const pathConnectsToCoal = checkPathToDestination(state.grid, 'coal');
+		// // Implement path checking logic here to determine if path connects to gold or coal
+		// const pathConnectsToGold = checkPathToDestination(state.grid, 'gold');
+		// const pathConnectsToCoal = checkPathToDestination(state.grid, 'coal');
 
-		if (pathConnectsToGold || pathConnectsToCoal) {
-			const winners = pathConnectsToGold ? 'miners' : 'saboteurs';
-			const [updatedPlayers, newScoreCardDeck] = dealScoreCardsToWinners(state.players, winners, [
-				...state.scoreCardDeck
-			]);
+		// if (pathConnectsToGold || pathConnectsToCoal) {
+		// 	const winners = pathConnectsToGold ? 'miners' : 'saboteurs';
+		// 	const [updatedPlayers, newScoreCardDeck] = dealScoreCardsToWinners(state.players, winners, [
+		// 		...state.scoreCardDeck
+		// 	]);
 
-			return {
-				...state,
-				players: updatedPlayers,
-				roundWinner: winners,
-				scoreCardDeck: newScoreCardDeck
-			};
-		}
+		// 	return {
+		// 		...state,
+		// 		players: updatedPlayers,
+		// 		roundWinner: winners,
+		// 		scoreCardDeck: newScoreCardDeck
+		// 	};
+		// }
 
 		return state;
 	});
@@ -792,7 +792,7 @@ export function rotateHand() {
 			...state,
 			players: state.players.map((p, i) =>
 				i === currentPlayerIndex ? { ...p, hand: rotatedHand } : p
-			),
+			)
 		};
 	});
 }

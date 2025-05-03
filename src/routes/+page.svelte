@@ -15,9 +15,10 @@
 		CARD_COUNT,
 		CARD_TYPES,
 		STARTING_HAND_SIZE,
-		startNewRound,
+		startNewRound as startNewRoundFromGameState,
 		checkPathAndScore,
-		ROUND_COUNT
+		ROUND_COUNT,
+		createPathCardDeck
 	} from '$lib/stores/gameState';
 
 	let canvas: HTMLCanvasElement;
@@ -147,49 +148,6 @@
 				}
 			}
 		};
-
-		players.forEach((player, index) => {
-			const playerY = deckY + (index + 1.5) * cellSize;
-			const toolSize = cellSize / 2;
-			const spacing = 10;
-
-			// Player name
-			new paper.PointText({
-				point: [deckX - 60, playerY + toolSize],
-				content: player.name,
-				fillColor: index + 1 === currentPlayer ? 'blue' : 'black',
-				fontSize: 14
-			});
-
-			// Draw tool squares
-			const tools = [
-				{ name: 'Cart', status: player.cart },
-				{ name: 'Lamp', status: player.lamp },
-				{ name: 'Pickaxe', status: player.pickaxe }
-			];
-
-			tools.forEach((tool, toolIndex) => {
-				const toolX = deckX + toolIndex * (toolSize + spacing);
-
-				// Tool square
-				new paper.Path.Rectangle({
-					point: [toolX, playerY],
-					size: [toolSize, toolSize],
-					strokeColor: 'black',
-					fillColor: tool.status ? '#90EE90' : '#FFB6C1',
-					strokeWidth: index + 1 === currentPlayer ? 2 : 1
-				});
-
-				// Tool label
-				new paper.PointText({
-					point: [toolX + toolSize / 2, playerY + toolSize + 15],
-					content: tool.name,
-					justification: 'center',
-					fillColor: index + 1 === currentPlayer ? 'blue' : 'black',
-					fontSize: 12
-				});
-			});
-		});
 
 		const cardY = startY + 8 * cellSize;
 		const maxCardsPerRow = 6;
@@ -348,17 +306,13 @@
 	}
 
 	function fillDeck() {
-		const unshuffledDeck = Object.entries(CARD_COUNT).flatMap(([type, count]) =>
-			Array(count)
-				.fill(null)
-				.map(() => ({ ...CARD_TYPES[type] }))
-		);
+		deck = createPathCardDeck();
+	}
 
-		deck = [...unshuffledDeck];
-		for (let i = deck.length - 1; i > 0; i--) {
-			const j = Math.floor(Math.random() * (i + 1));
-			[deck[i], deck[j]] = [deck[j], deck[i]];
-		}
+	function startNewRound() {
+		startNewRoundFromGameState();
+		fillDeck();
+		drawGrid();
 	}
 
 	function drawLocalCard() {
@@ -465,10 +419,10 @@
 		// Initialize game with 4 players (or any other number from 3-10)
 		initializeGame(4);
 		fillDeck();
-		
+
 		// Deal initial cards to all players using the store directly
-		gameState.update(state => {
-			const updatedPlayers = state.players.map(player => {
+		gameState.update((state) => {
+			const updatedPlayers = state.players.map((player) => {
 				const hand = [];
 				for (let i = 0; i < STARTING_HAND_SIZE; i++) {
 					const drawnCard = deck.shift();
@@ -478,7 +432,7 @@
 				}
 				return { ...player, hand };
 			});
-			
+
 			return {
 				...state,
 				players: updatedPlayers
