@@ -115,7 +115,10 @@
 			e: false,
 			n: false,
 			name: 'elbow',
-			deadEnd: false
+			deadEnd: false,
+			valid: true,
+			destination: false,
+			score: false
 		},
 		elbow_reverse: {
 			w: false,
@@ -123,7 +126,10 @@
 			e: true,
 			n: true,
 			name: 'elbow_reverse',
-			deadEnd: false
+			deadEnd: false,
+			valid: true,
+			destination: false,
+			score: false
 		},
 		t_bottom: {
 			w: true,
@@ -131,7 +137,10 @@
 			e: true,
 			n: false,
 			name: 't_bottom',
-			deadEnd: false
+			deadEnd: false,
+			valid: true,
+			destination: false,
+			score: false
 		},
 		t_side: {
 			w: false,
@@ -139,7 +148,10 @@
 			e: true,
 			n: true,
 			name: 't_side',
-			deadEnd: false
+			deadEnd: false,
+			valid: true,
+			destination: false,
+			score: false
 		},
 		streight_forward: {
 			w: false,
@@ -147,7 +159,10 @@
 			e: false,
 			n: true,
 			name: 'streight_forward',
-			deadEnd: false
+			deadEnd: false,
+			valid: true,
+			destination: false,
+			score: false
 		},
 		streight_side: {
 			w: true,
@@ -155,7 +170,10 @@
 			e: true,
 			n: false,
 			name: 'streight_side',
-			deadEnd: false
+			deadEnd: false,
+			valid: true,
+			destination: false,
+			score: false
 		},
 		cross: {
 			w: true,
@@ -163,7 +181,10 @@
 			e: true,
 			n: true,
 			name: 'cross',
-			deadEnd: false
+			deadEnd: false,
+			valid: true,
+			destination: false,
+			score: false
 		},
 		end_bottom: {
 			w: false,
@@ -171,7 +192,10 @@
 			e: false,
 			n: false,
 			name: 'end_bottom',
-			deadEnd: true
+			deadEnd: true,
+			valid: true,
+			destination: false,
+			score: false
 		},
 		end_side: {
 			w: true,
@@ -179,7 +203,10 @@
 			e: false,
 			n: false,
 			name: 'end_side',
-			deadEnd: true
+			deadEnd: true,
+			valid: true,
+			destination: false,
+			score: false
 		},
 		end_elbow: {
 			w: true,
@@ -187,7 +214,10 @@
 			e: false,
 			n: false,
 			name: 'end_elbow',
-			deadEnd: true
+			deadEnd: true,
+			valid: true,
+			destination: false,
+			score: false
 		},
 		end_elbow_reverse: {
 			w: false,
@@ -195,7 +225,10 @@
 			e: true,
 			n: false,
 			name: 'end_elbow_reverse',
-			deadEnd: true
+			deadEnd: true,
+			valid: true,
+			destination: false,
+			score: false
 		},
 		streight_forward_dead: {
 			w: false,
@@ -203,7 +236,10 @@
 			e: false,
 			n: true,
 			name: 'streight_forward',
-			deadEnd: true
+			deadEnd: true,
+			valid: true,
+			destination: false,
+			score: false
 		},
 		streight_side_dead: {
 			w: true,
@@ -211,7 +247,10 @@
 			e: true,
 			n: false,
 			name: 'streight_side',
-			deadEnd: true
+			deadEnd: true,
+			valid: true,
+			destination: false,
+			score: false
 		},
 		t_bottom_dead: {
 			w: true,
@@ -219,7 +258,10 @@
 			e: true,
 			n: false,
 			name: 't_bottom',
-			deadEnd: true
+			deadEnd: true,
+			valid: true,
+			destination: false,
+			score: false
 		},
 		t_side_dead: {
 			w: false,
@@ -227,7 +269,10 @@
 			e: true,
 			n: true,
 			name: 't_side',
-			deadEnd: true
+			deadEnd: true,
+			valid: true,
+			destination: false,
+			score: false
 		},
 		cross_dead: {
 			w: true,
@@ -235,7 +280,10 @@
 			e: true,
 			n: true,
 			name: 'cross',
-			deadEnd: true
+			deadEnd: true,
+			valid: true,
+			destination: false,
+			score: false
 		},
 		gold: {
 			n: false,
@@ -243,7 +291,10 @@
 			e: false,
 			w: false,
 			name: 'gold',
-			deadEnd: true
+			deadEnd: true,
+			valid: false,
+			destination: true,
+			score: false
 		},
 		coal: {
 			n: false,
@@ -251,7 +302,10 @@
 			e: false,
 			w: false,
 			name: 'coal',
-			deadEnd: true
+			deadEnd: true,
+			valid: false,
+			destination: true,
+			score: true
 		}
 	};
 
@@ -282,11 +336,14 @@
 				const x = startX + col * cellSize;
 				const y = startY + row * cellSize;
 
+				// Draw cell border with highlight for valid positions
+				const isValidPosition =
+					selectedCard && playablePositions.some((pos) => pos.row === row && pos.col === col);
 				const rect = new paper.Path.Rectangle({
 					point: [x, y],
 					size: [cellSize, cellSize],
 					strokeColor: 'black',
-					fillColor: 'white'
+					fillColor: isValidPosition ? '#90EE90' : 'white'
 				});
 
 				const card = grid[row][col];
@@ -296,8 +353,17 @@
 
 				rect.onClick = (event: paper.MouseEvent) => {
 					if (selectedCard) {
-						console.log('Placing card at', row, col);
-						placeCard(row, col, selectedCard);
+						const isValidPosition = playablePositions.some(
+							(pos) => pos.row === row && pos.col === col
+						);
+						if (isValidPosition) {
+							console.log('Placing card at', row, col);
+							placeCard(row, col, selectedCard);
+							cards = cards.filter((c) => c !== selectedCard);
+							drawGrid();
+						} else {
+							console.log('Invalid position for card placement');
+						}
 					}
 				};
 			}
@@ -549,7 +615,8 @@
 					row > 0 &&
 					existingCards[row - 1][col] &&
 					activeCard.n &&
-					existingCards[row - 1][col]!.s
+					existingCards[row - 1][col]!.s &&
+					existingCards[row - 1][col]!.valid
 				) {
 					canPlace = true;
 				}
@@ -558,7 +625,8 @@
 					row < existingCards.length - 1 &&
 					existingCards[row + 1][col] &&
 					activeCard.s &&
-					existingCards[row + 1][col]!.n
+					existingCards[row + 1][col]!.n &&
+					existingCards[row + 1][col]!.valid
 				) {
 					canPlace = true;
 				}
@@ -567,7 +635,8 @@
 					col < existingCards[row].length - 1 &&
 					existingCards[row][col + 1] &&
 					activeCard.e &&
-					existingCards[row][col + 1]!.w
+					existingCards[row][col + 1]!.w &&
+					existingCards[row][col + 1]!.valid
 				) {
 					canPlace = true;
 				}
@@ -576,7 +645,8 @@
 					col > 0 &&
 					existingCards[row][col - 1] &&
 					activeCard.w &&
-					existingCards[row][col - 1]!.e
+					existingCards[row][col - 1]!.e &&
+					existingCards[row][col - 1]!.valid
 				) {
 					canPlace = true;
 				}
