@@ -1,15 +1,56 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, afterUpdate } from 'svelte';
 	import paper from 'paper';
+	import { gameState, type Card, placeCard, selectCard } from '$lib/stores/gameState';
 
-	interface Card {
-		n: boolean;
-		s: boolean;
-		e: boolean;
-		w: boolean;
-		name: string;
-		deadEnd: boolean;
-	}
+	let canvas: HTMLCanvasElement;
+	let cards: Card[];
+	let paperInitialized = false;
+	let currentPlayer = 'a';
+	let players = [
+		{
+			name: 'Player 1',
+			id: 'a'
+		},
+		{
+			name: 'Player 2',
+			id: 'b'
+		},
+		{
+			name: 'Player 3',
+			id: 'c'
+		},
+		{
+			name: 'Player 4',
+			id: 'd'
+		}
+	];
+
+	$: grid = $gameState.grid;
+	$: selectedCard = $gameState.selectedCard;
+
+	afterUpdate(() => {
+		if (paperInitialized) {
+			console.log('Redrawing after update');
+			drawGrid();
+		}
+	});
+
+	const CARD_COUNT = {
+		elbow: 5,
+		elbow_reverse: 5,
+		t_bottom: 5,
+		t_side: 5,
+		streight_forward: 5,
+		streight_side: 5,
+		cross: 5,
+		end_bottom: 1,
+		end_side: 1,
+		end_elbow: 1,
+		end_elbow_reverse: 1,
+		gold: 1,
+		coal: 2
+	};
 
 	const CARD_TYPES: Record<string, Card> = {
 		elbow: {
@@ -139,71 +180,181 @@
 			n: true,
 			name: 'cross',
 			deadEnd: true
+		},
+		gold: {
+			n: false,
+			s: true,
+			e: false,
+			w: false,
+			name: 'gold',
+			deadEnd: true
+		},
+		coal: {
+			n: false,
+			s: true,
+			e: false,
+			w: false,
+			name: 'coal',
+			deadEnd: true
 		}
 	};
 
-	let cards = $state<Card[]>([]);
-	let canvas: HTMLCanvasElement;
-	let selectedCard: paper.Group | null = null;
-	let draggedPaths: paper.Path[] = [];
-	let gridCells: paper.Path.Rectangle[] = [];
+	function drawGrid() {
+		if (!paper.project) return;
 
-	function createCard(x: number, y: number, card: Card) {
-		const cardRect = new paper.Path.Rectangle({
-			point: [x, y],
-			size: [60, 60],
-			fillColor: card.deadEnd ? '#ffcccc' : '#ffffff',
-			strokeColor: '#000000',
-			strokeWidth: 1,
-			radius: 5
+		console.log('Drawing grid', { grid, selectedCard });
+		paper.project.clear();
+		const cellSize = 80;
+		const startX = 100;
+		const startY = 100;
+
+		// Draw grid cells and cards
+		for (let row = 0; row < 7; row++) {
+			for (let col = 0; col < 7; col++) {
+				const x = startX + col * cellSize;
+				const y = startY + row * cellSize;
+
+				// Draw cell border with hover effect
+				const rect = new paper.Path.Rectangle({
+					point: [x, y],
+					size: [cellSize, cellSize],
+					strokeColor: 'black',
+					fillColor: 'white'
+				});
+
+				// Draw card if exists
+				const card = grid[row][col];
+				if (card) {
+					drawCard(x, y, cellSize, card);
+				}
+
+				// Add click handler for cell
+				rect.onClick = (event: paper.MouseEvent) => {
+					if (selectedCard) {
+						console.log('Placing card at', row, col);
+						placeCard(row, col, selectedCard);
+					}
+				};
+			}
+		}
+
+		// Draw available cards
+		const cardY = startY + 8 * cellSize;
+		cards.forEach((card, index) => {
+			const x = startX + index * cellSize;
+			const cardGroup = new paper.Group();
+
+			// Draw card background
+			const rect = new paper.Path.Rectangle({
+				point: [x, cardY],
+				size: [cellSize, cellSize],
+				strokeColor: 'black',
+				fillColor: card === selectedCard ? '#e0e0ff' : 'white'
+			});
+			cardGroup.addChild(rect);
+
+			// Draw card paths
+			drawCard(x, cardY, cellSize, card, cardGroup);
+
+			// Add click handler for card selection
+			cardGroup.onClick = (event: paper.MouseEvent) => {
+				console.log('Selecting card', card.name);
+				selectCard(card);
+			};
 		});
 
+		paper.view.update();
+	}
+
+	function drawCard(x: number, y: number, size: number, card: Card, group?: paper.Group) {
 		const paths: paper.Path[] = [];
-		const center = cardRect.bounds.center;
-		const pathColor = '#333333';
-		const pathWidth = 8;
-		const pathLength = card.deadEnd ? 15 : 30; // Shorter paths for dead ends
+		const center = new paper.Point(x + size / 2, y + size / 2);
 
-		if (card.n) {
-			paths.push(new paper.Path.Line({
-				from: card.deadEnd ? [center.x, center.y - pathLength] : [center.x, center.y],
-				to: [center.x, y],
-				strokeColor: pathColor,
-				strokeWidth: pathWidth,
-				strokeCap: 'round'
-			}));
-		}
-		if (card.s) {
-			paths.push(new paper.Path.Line({
-				from: card.deadEnd ? [center.x, center.y + pathLength] : [center.x, center.y],
-				to: [center.x, y + 60],
-				strokeColor: pathColor,
-				strokeWidth: pathWidth,
-				strokeCap: 'round'
-			}));
-		}
-		if (card.w) {
-			paths.push(new paper.Path.Line({
-				from: card.deadEnd ? [center.x - pathLength, center.y] : [center.x, center.y],
-				to: [x, center.y],
-				strokeColor: pathColor,
-				strokeWidth: pathWidth,
-				strokeCap: 'round'
-			}));
-		}
-		if (card.e) {
-			paths.push(new paper.Path.Line({
-				from: card.deadEnd ? [center.x + pathLength, center.y] : [center.x, center.y],
-				to: [x + 60, center.y],
-				strokeColor: pathColor,
-				strokeWidth: pathWidth,
-				strokeCap: 'round'
-			}));
+		// Adjust angles to be 90 degrees counter-clockwise
+		if (card.n) paths.push(drawPath(center, 270, size, card.deadEnd, card.name)); // was 0
+		if (card.e) paths.push(drawPath(center, 0, size, card.deadEnd, card.name)); // was 90
+		if (card.s) paths.push(drawPath(center, 90, size, card.deadEnd, card.name)); // was 180
+		if (card.w) paths.push(drawPath(center, 180, size, card.deadEnd, card.name)); // was 270
+
+		if (group) {
+			paths.forEach((path) => group.addChild(path));
+		} else {
+			// Make special cards more prominent
+			let strokeWidth = 3;
+			if (card.name === 'cross') strokeWidth = 4;
+			if (card.name === 'gold') strokeWidth = 5;
+			paths.forEach((path) => (path.strokeWidth = strokeWidth));
 		}
 
-		const group = new paper.Group([cardRect, ...paths]);
-		group.data = { card, isCard: true };
-		return { group, paths };
+		// Add goal indicators
+		if (!group) {
+			if (card.name === 'gold') {
+				const circle = new paper.Path.Circle({
+					center: center,
+					radius: size / 8,
+					fillColor: '#FFD700',
+					strokeColor: '#B8860B',
+					strokeWidth: 1
+				});
+			} else if (card.name === 'coal') {
+				const circle = new paper.Path.Circle({
+					center: center,
+					radius: size / 8,
+					fillColor: '#8B4513',
+					strokeColor: '#654321',
+					strokeWidth: 1
+				});
+			}
+		}
+	}
+
+	function drawPath(
+		center: paper.Point,
+		angle: number,
+		size: number,
+		isDeadEnd: boolean,
+		cardName: string
+	) {
+		const path = new paper.Path();
+		let pathColor = 'black';
+		if (isDeadEnd) {
+			pathColor = cardName === 'gold' ? '#FFD700' : '#8B4513';
+		}
+		path.strokeColor = new paper.Color(pathColor);
+		path.strokeWidth = 2;
+
+		const start = center;
+		let end;
+
+		if (isDeadEnd) {
+			// For dead ends, only draw 1/3 of the way from the edge
+			end = center.add(
+				new paper.Point({
+					length: size / 6,
+					angle: angle
+				})
+			);
+			// Move the start point to the edge
+			const edgeStart = center.add(
+				new paper.Point({
+					length: size / 2,
+					angle: angle
+				})
+			);
+			path.moveTo(edgeStart);
+		} else {
+			end = center;
+			const edgeStart = center.add(
+				new paper.Point({
+					length: size / 2,
+					angle: angle
+				})
+			);
+			path.moveTo(edgeStart);
+		}
+
+		path.lineTo(end);
+		return path;
 	}
 
 	onMount(() => {
@@ -226,89 +377,17 @@
 			CARD_TYPES.cross_dead
 		];
 
-		// Setup Paper.js
 		paper.setup(canvas);
-		const cardSize = 60;
-		const padding = 20;
+		paperInitialized = true;
+		drawGrid();
 
-		// Create game grid (7x5)
-		const gridStartX = 200;
-		const gridStartY = 50;
-		const gridWidth = 5;
-		const gridHeight = 7;
-
-		for (let row = 0; row < gridHeight; row++) {
-			for (let col = 0; col < gridWidth; col++) {
-				const x = gridStartX + col * (cardSize + padding);
-				const y = gridStartY + row * (cardSize + padding);
-				const cell = new paper.Path.Rectangle({
-					point: [x, y],
-					size: [cardSize, cardSize],
-					strokeColor: '#cccccc',
-					strokeWidth: 1,
-					fillColor: '#f8f8f8',
-					opacity: 0.5
-				});
-				cell.data = { isGrid: true, row, col };
-				gridCells.push(cell);
-			}
-		}
-
-		// Create draggable cards in a horizontal row at the bottom
-		const cardStartY = 600; // Fixed Y position at bottom
-		const cardsPerRow = 8; // Number of cards per row
-		
-		cards.forEach((card, index) => {
-			const row = Math.floor(index / cardsPerRow);
-			const col = index % cardsPerRow;
-			const x = padding + col * (cardSize + padding);
-			const y = cardStartY + row * (cardSize + padding);
-
-			const { group, paths } = createCard(x, y, card);
-			
-			group.onMouseDown = (event: paper.MouseEvent) => {
-				selectedCard = group;
-				group.bringToFront();
-			};
-		});
-
-		paper.view.onMouseDrag = (event: paper.MouseEvent) => {
-			if (selectedCard) {
-				selectedCard.position = selectedCard.position.add(event.delta);
-				
-				// Highlight grid cell under card
-				gridCells.forEach(cell => {
-					if (cell.bounds.contains(selectedCard!.position)) {
-						cell.fillColor = new paper.Color('#e6e6e6');
-					} else {
-						cell.fillColor = new paper.Color('#f8f8f8');
-					}
-				});
-			}
+		return () => {
+			paper.project.clear();
 		};
-
-		paper.view.onMouseUp = (event: paper.MouseEvent) => {
-			if (selectedCard) {
-				// Find nearest grid cell
-				const nearestCell = gridCells.find(cell => 
-					cell.bounds.contains(selectedCard!.position)
-				);
-
-				if (nearestCell) {
-					selectedCard.position = nearestCell.bounds.center;
-				}
-
-				// Reset grid cell colors
-				gridCells.forEach(cell => {
-					cell.fillColor = new paper.Color('#f8f8f8');
-				});
-
-				selectedCard = null;
-			}
-		};
-
-		paper.view.draw();
 	});
 </script>
 
-<canvas bind:this={canvas} style="width: 100%; max-width: 1200px; height: 800px; background: #f0f0f0;"></canvas>
+<canvas
+	bind:this={canvas}
+	style="width: 100%; max-width: 1200px; height: 1000px; background: #f0f0f0;"
+></canvas>
