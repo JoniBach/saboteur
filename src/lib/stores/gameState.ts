@@ -410,7 +410,7 @@ const goldCard: Card = {
 	w: false,
 	name: 'gold',
 	deadEnd: true,
-	valid: true,
+	valid: false,
 	destination: true,
 	score: true
 };
@@ -422,7 +422,7 @@ const coalCard: Card = {
 	w: false,
 	name: 'coal',
 	deadEnd: true,
-	valid: true,
+	valid: false,
 	destination: true,
 	score: false
 };
@@ -688,31 +688,6 @@ export const removeCardFromHand = (card: Card) => {
 	});
 };
 
-// Check if path connects to destination and update scores
-export function checkPathAndScore() {
-	gameState.update((state: GameState) => {
-		// // Implement path checking logic here to determine if path connects to gold or coal
-		// const pathConnectsToGold = checkPathToDestination(state.grid, 'gold');
-		// const pathConnectsToCoal = checkPathToDestination(state.grid, 'coal');
-
-		// if (pathConnectsToGold || pathConnectsToCoal) {
-		// 	const winners = pathConnectsToGold ? 'miners' : 'saboteurs';
-		// 	const [updatedPlayers, newScoreCardDeck] = dealScoreCardsToWinners(state.players, winners, [
-		// 		...state.scoreCardDeck
-		// 	]);
-
-		// 	return {
-		// 		...state,
-		// 		players: updatedPlayers,
-		// 		roundWinner: winners,
-		// 		scoreCardDeck: newScoreCardDeck
-		// 	};
-		// }
-
-		return state;
-	});
-}
-
 // Helper function to check if a card can be placed at a specific position
 export function isValidCardPlacement(
 	grid: (Card | null)[][],
@@ -762,7 +737,7 @@ export function isValidCardPlacement(
 			const adjacentCard = grid[newRow][newCol];
 
 			// If there's a card in the adjacent cell
-			if (adjacentCard) {
+			if (adjacentCard && adjacentCard.valid) {
 				hasAdjacentCard = true;
 
 				// Check if the card connections match

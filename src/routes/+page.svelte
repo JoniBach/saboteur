@@ -16,7 +16,6 @@
 		CARD_TYPES,
 		STARTING_HAND_SIZE,
 		startNewRound as startNewRoundFromGameState,
-		checkPathAndScore,
 		ROUND_COUNT,
 		createPathCardDeck,
 		isValidCardPlacement
@@ -34,8 +33,6 @@
 	$: currentRound = $gameState.currentRound;
 	$: roundWinner = $gameState.roundWinner;
 
-	$: playablePositions = getPlayablePositions(grid, selectedCard);
-	$: console.log('Playable positions', playablePositions);
 	afterUpdate(() => {
 		if (paperInitialized) {
 			console.log('Redrawing after update');
@@ -67,8 +64,7 @@
 				const y = startY + row * cellSize;
 
 				// Draw cell border with highlight for valid positions
-				const isValidPosition =
-					selectedCard && isValidCardPlacement(grid, row, col, selectedCard);
+				const isValidPosition = selectedCard && isValidCardPlacement(grid, row, col, selectedCard);
 				const rect = new paper.Path.Rectangle({
 					point: [x, y],
 					size: [cellSize, cellSize],
@@ -336,76 +332,7 @@
 		}));
 	}
 
-	function compareRouteCards(cardA: Card, cardB: Card) {
-		if (cardA.n && cardB.s) return true;
-		if (cardA.s && cardB.n) return true;
-		if (cardA.e && cardB.w) return true;
-		if (cardA.w && cardB.e) return true;
-		return false;
-	}
-
-	function getPlayablePositions(existingCards: (Card | null)[][], activeCard: Card | null) {
-		if (!activeCard) return [];
-
-		const playablePositions: { row: number; col: number }[] = [];
-
-		for (let row = 0; row < existingCards.length; row++) {
-			for (let col = 0; col < existingCards[row].length; col++) {
-				if (existingCards[row][col]) continue;
-
-				let canPlace = false;
-
-				if (
-					row > 0 &&
-					existingCards[row - 1][col] &&
-					activeCard.n &&
-					existingCards[row - 1][col]!.s &&
-					existingCards[row - 1][col]!.valid
-				) {
-					canPlace = true;
-				}
-
-				if (
-					row < existingCards.length - 1 &&
-					existingCards[row + 1][col] &&
-					activeCard.s &&
-					existingCards[row + 1][col]!.n &&
-					existingCards[row + 1][col]!.valid
-				) {
-					canPlace = true;
-				}
-
-				if (
-					col < existingCards[row].length - 1 &&
-					existingCards[row][col + 1] &&
-					activeCard.e &&
-					existingCards[row][col + 1]!.w &&
-					existingCards[row][col + 1]!.valid
-				) {
-					canPlace = true;
-				}
-
-				if (
-					col > 0 &&
-					existingCards[row][col - 1] &&
-					activeCard.w &&
-					existingCards[row][col - 1]!.e &&
-					existingCards[row][col - 1]!.valid
-				) {
-					canPlace = true;
-				}
-
-				if (canPlace) {
-					playablePositions.push({ row, col });
-				}
-			}
-		}
-
-		return playablePositions;
-	}
-
 	function handleRoundEnd() {
-		checkPathAndScore();
 		if (currentRound < ROUND_COUNT) {
 			startNewRound();
 		}
