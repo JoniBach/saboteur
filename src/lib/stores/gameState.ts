@@ -1,6 +1,7 @@
 import { writable } from 'svelte/store';
 
 export interface Card {
+	type: 'path';
 	n: boolean;
 	s: boolean;
 	e: boolean;
@@ -40,7 +41,8 @@ export interface ToolCard {
 }
 
 export interface ActionCard {
-	type: 'damage' | 'repair' | 'cavein' | 'map';
+	type: 'action';
+	action: 'damage' | 'repair' | 'cavein' | 'map';
 	tool?: ToolCard | undefined; // required for damage and repair
 }
 
@@ -148,8 +150,37 @@ export const CARD_COUNT = {
 	end_elbow_reverse: 1
 };
 
+export const ACTION_ICON = {
+	map: '🗺️',
+	cavein: '🪨',
+	damage_pickaxe: '⛏️❌',
+	damage_cart: '🛒❌',
+	damage_lamp: '🔦❌',
+	repair_pickaxe: '⛏️✅',
+	repair_cart: '🛒✅',
+	repair_lamp: '🔦✅',
+	repair_lamp_or_cart: '🔦/🛒✅',
+	repair_pickaxe_or_lamp: '⛏️/🔦✅',
+	repair_pickaxe_or_cart: '⛏️/🛒✅'
+};
+
+export const ACTION_DETAILS = {
+	map: { icon: '🗺️', action: 'show_map' },
+	cavein: { icon: '🪨', action: 'trigger_cavein' },
+	damage_pickaxe: { icon: '⛏️❌', action: 'damage', tool: 'pickaxe' },
+	damage_cart: { icon: '🛒❌', action: 'damage', tool: 'cart' },
+	damage_lamp: { icon: '🔦❌', action: 'damage', tool: 'lamp' },
+	repair_pickaxe: { icon: '⛏️✅', action: 'repair', tool: 'pickaxe' },
+	repair_cart: { icon: '🛒✅', action: 'repair', tool: 'cart' },
+	repair_lamp: { icon: '🔦✅', action: 'repair', tool: 'lamp' },
+	repair_lamp_or_cart: { icon: '🔦/🛒✅', action: 'repair', tool: 'lamp_or_cart' },
+	repair_pickaxe_or_lamp: { icon: '⛏️/🔦✅', action: 'repair', tool: 'pickaxe_or_lamp' },
+	repair_pickaxe_or_cart: { icon: '⛏️/🛒✅', action: 'repair', tool: 'pickaxe_or_cart' }
+};
+
 export const CARD_TYPES: Record<string, Card> = {
 	elbow: {
+		type: 'path',
 		w: true,
 		s: true,
 		e: false,
@@ -161,6 +192,7 @@ export const CARD_TYPES: Record<string, Card> = {
 		score: false
 	},
 	elbow_reverse: {
+		type: 'path',
 		w: false,
 		s: false,
 		e: true,
@@ -172,6 +204,7 @@ export const CARD_TYPES: Record<string, Card> = {
 		score: false
 	},
 	t_bottom: {
+		type: 'path',
 		w: true,
 		s: true,
 		e: true,
@@ -183,6 +216,7 @@ export const CARD_TYPES: Record<string, Card> = {
 		score: false
 	},
 	t_side: {
+		type: 'path',
 		w: false,
 		s: true,
 		e: true,
@@ -194,6 +228,7 @@ export const CARD_TYPES: Record<string, Card> = {
 		score: false
 	},
 	streight_forward: {
+		type: 'path',
 		w: false,
 		s: true,
 		e: false,
@@ -205,6 +240,7 @@ export const CARD_TYPES: Record<string, Card> = {
 		score: false
 	},
 	streight_side: {
+		type: 'path',
 		w: true,
 		s: false,
 		e: true,
@@ -216,6 +252,7 @@ export const CARD_TYPES: Record<string, Card> = {
 		score: false
 	},
 	cross: {
+		type: 'path',
 		w: true,
 		s: true,
 		e: true,
@@ -227,6 +264,7 @@ export const CARD_TYPES: Record<string, Card> = {
 		score: false
 	},
 	end_bottom: {
+		type: 'path',
 		w: false,
 		s: true,
 		e: false,
@@ -238,6 +276,7 @@ export const CARD_TYPES: Record<string, Card> = {
 		score: false
 	},
 	end_side: {
+		type: 'path',
 		w: true,
 		s: false,
 		e: false,
@@ -249,6 +288,7 @@ export const CARD_TYPES: Record<string, Card> = {
 		score: false
 	},
 	end_elbow: {
+		type: 'path',
 		w: true,
 		s: true,
 		e: false,
@@ -260,6 +300,7 @@ export const CARD_TYPES: Record<string, Card> = {
 		score: false
 	},
 	end_elbow_reverse: {
+		type: 'path',
 		w: false,
 		s: true,
 		e: true,
@@ -271,6 +312,7 @@ export const CARD_TYPES: Record<string, Card> = {
 		score: false
 	},
 	streight_forward_dead: {
+		type: 'path',
 		w: false,
 		s: true,
 		e: false,
@@ -282,6 +324,7 @@ export const CARD_TYPES: Record<string, Card> = {
 		score: false
 	},
 	streight_side_dead: {
+		type: 'path',
 		w: true,
 		s: false,
 		e: true,
@@ -293,6 +336,7 @@ export const CARD_TYPES: Record<string, Card> = {
 		score: false
 	},
 	t_bottom_dead: {
+		type: 'path',
 		w: true,
 		s: true,
 		e: true,
@@ -304,6 +348,7 @@ export const CARD_TYPES: Record<string, Card> = {
 		score: false
 	},
 	t_side_dead: {
+		type: 'path',
 		w: false,
 		s: true,
 		e: true,
@@ -315,6 +360,7 @@ export const CARD_TYPES: Record<string, Card> = {
 		score: false
 	},
 	cross_dead: {
+		type: 'path',
 		w: true,
 		s: true,
 		e: true,
@@ -333,8 +379,8 @@ export const createActionCardDeck = () => {
 	Object.entries(ACTION_CARD).forEach(([type, count]) => {
 		for (let i = 0; i < count; i++) {
 			deck.push({
-				type: type as ActionCard['type'],
-				tool: type.includes('_') ? { [type.split('_')[1]]: true } : undefined
+				type: 'action',
+				details: ACTION_DETAILS[type]
 			});
 		}
 	});
@@ -386,6 +432,23 @@ export function createPathCardDeck(): Card[] {
 	}
 
 	return deck;
+}
+
+// Create and shuffle mixed deck (using path and actions)
+export function createMixedDeck(): Card[] {
+	const mixedDeck = [...createPathCardDeck(), ...createActionCardDeck()];
+
+	// Shuffle the deck
+	for (let i = mixedDeck.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1));
+		[mixedDeck[i], mixedDeck[j]] = [mixedDeck[j], mixedDeck[i]];
+	}
+
+	return mixedDeck;
+}
+
+export function damageTool(action: string, player: Player) {
+	console.log(action, player);
 }
 
 // Deal cards to players from deck
@@ -539,9 +602,6 @@ export function startNewRound() {
 			.map(() => Array(7).fill(null));
 		setupInitialGrid(newGrid);
 
-		// Create fresh path cards deck
-		const pathDeck = createPathCardDeck();
-
 		// Reassign roles
 		const roles = assignRoles(state.players.length);
 
@@ -552,7 +612,8 @@ export function startNewRound() {
 			hand: [] as Card[] // Clear hand, will be refilled by dealCardsToPlayers
 		}));
 
-		const [playersWithHands] = dealCardsToPlayers(updatedPlayers, pathDeck);
+		const mixedDeck = createMixedDeck();
+		const [playersWithHands] = dealCardsToPlayers(updatedPlayers, mixedDeck);
 
 		return {
 			...state,
@@ -575,9 +636,8 @@ export function initializeGame(playerCount: number) {
 		.map(() => Array(7).fill(null));
 	setupInitialGrid(grid);
 
-	// Create initial path cards deck
-	const pathDeck = createPathCardDeck();
-
+	const mixedDeck = createMixedDeck();
+	console.log(mixedDeck);
 	// Create and deal to players
 	const players = Array(playerCount)
 		.fill(null)
@@ -592,7 +652,7 @@ export function initializeGame(playerCount: number) {
 			score: 0
 		}));
 
-	const [playersWithHands] = dealCardsToPlayers(players, pathDeck);
+	const [playersWithHands] = dealCardsToPlayers(players, mixedDeck);
 
 	gameState.update((state) => ({
 		...state,
@@ -648,15 +708,23 @@ export const placeCard = (row: number, col: number, card: Card) => {
 			grid: newGrid,
 			selectedCard: null,
 			players: newPlayers,
-			currentPlayer: (state.currentPlayer % state.players.length) + 1
+			currentPlayer: state.currentPlayer % state.players.length
 		};
 
 		return nextPlayerState;
 	});
 };
 
-export const selectCard = (card: Card) => {
-	console.log('Selecting card', card.name);
+export const selectCard = (card: Card, player: Player) => {
+	console.log('Selecting card', { card, player });
+
+	if (
+		card?.type === 'path' &&
+		(player.pickaxe === false || player.cart === false || player.lamp === false)
+	) {
+		console.log('Player does not have the required tools to play this card');
+		return;
+	}
 	gameState.update((state: GameState) => ({
 		...state,
 		selectedCard: card

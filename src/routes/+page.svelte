@@ -10,15 +10,14 @@
 		rotateHand,
 		selectCard,
 		nextTurn,
-		drawCard,
-		removeCardFromHand,
-		CARD_COUNT,
-		CARD_TYPES,
 		STARTING_HAND_SIZE,
 		startNewRound as startNewRoundFromGameState,
 		ROUND_COUNT,
-		createPathCardDeck,
-		isValidCardPlacement
+		isValidCardPlacement,
+		createMixedDeck,
+		type ActionCard,
+		ACTION_ICON,
+		ACTION_DETAILS
 	} from '$lib/stores/gameState';
 
 	let canvas: HTMLCanvasElement;
@@ -29,25 +28,16 @@
 	$: selectedCard = $gameState.selectedCard;
 	$: players = $gameState.players;
 	$: currentPlayer = $gameState.currentPlayer;
+	$: currentPlayerDetails = $gameState.players[currentPlayer - 1];
 	$: currentPlayerHand = $gameState.players[currentPlayer - 1]?.hand || [];
 	$: currentRound = $gameState.currentRound;
 	$: roundWinner = $gameState.roundWinner;
 
 	afterUpdate(() => {
 		if (paperInitialized) {
-			console.log('Redrawing after update');
 			drawGrid();
 		}
 	});
-
-	function rotateCard(card: Card) {
-		const newCard = { ...card };
-		newCard.n = card.s;
-		newCard.s = card.n;
-		newCard.e = card.w;
-		newCard.w = card.e;
-		return newCard;
-	}
 
 	function drawGrid() {
 		if (!paper.project) return;
@@ -81,7 +71,6 @@
 					if (selectedCard) {
 						const isValidPosition = isValidCardPlacement(grid, row, col, selectedCard);
 						if (isValidPosition) {
-							console.log('Placing card at', row, col);
 							placeCard(row, col, selectedCard);
 							removeLocalCardFromHand(selectedCard);
 							nextTurn();
@@ -195,26 +184,75 @@
 			const y = cardY + row * (cellSize + cardPadding);
 			const cardGroup = new paper.Group();
 
+			const color =
+				!currentPlayerDetails.pickaxe || !currentPlayerDetails.cart || !currentPlayerDetails.lamp
+					? '#ffdddd'
+					: card === selectedCard
+						? '#e0e0ff'
+						: 'white';
+
 			const rect = new paper.Path.Rectangle({
 				point: [x, y],
 				size: [cellSize, cellSize],
 				strokeColor: 'black',
-				fillColor: card === selectedCard ? '#e0e0ff' : 'white'
+				fillColor: color
 			});
 			cardGroup.addChild(rect);
 
 			renderCard(x, y, cellSize, card, cardGroup);
 
 			cardGroup.onClick = (event: paper.MouseEvent) => {
-				console.log('Selecting card', card.name);
-				selectCard(card);
+				selectCard(card, currentPlayerDetails);
 			};
 		});
 
 		paper.view.update();
 	}
 
-	function renderCard(x: number, y: number, size: number, card: Card, group?: paper.Group) {
+	$: console.log('selected card', selectedCard);
+	function renderCard(
+		x: number,
+		y: number,
+		size: number,
+		card: ActionCard | Card,
+		group?: paper.Group
+	) {
+		if (card.type === 'action') {
+			renderActionCard(x, y, size, card, group);
+		} else {
+			renderPathCard(x, y, size, card, group);
+		}
+	}
+	function renderActionCard(
+		x: number,
+		y: number,
+		size: number,
+		card: ActionCard,
+		group?: paper.Group
+	) {
+		console.log(card);
+		const rect = new paper.Path.Rectangle({
+			point: [x, y],
+			size: [size, size],
+			strokeColor: card.details.action === 'damage' ? 'red' : 'green',
+			fillColor: selectedCard === card ? '#e0e0ff' : 'white'
+		});
+
+		const text = new paper.PointText({
+			point: [x + size / 2, y + size / 2],
+			content: card.details.icon,
+			justification: 'center',
+			fillColor: 'black',
+			fontSize: 20
+		});
+
+		if (group) {
+			group.addChild(rect);
+			group.addChild(text);
+		}
+	}
+
+	function renderPathCard(x: number, y: number, size: number, card: Card, group?: paper.Group) {
 		const paths: paper.Path[] = [];
 		const center = new paper.Point(x + size / 2, y + size / 2);
 
@@ -301,7 +339,7 @@
 	}
 
 	function fillDeck() {
-		deck = createPathCardDeck();
+		deck = createMixedDeck();
 	}
 
 	function startNewRound() {
@@ -367,6 +405,61 @@
 
 		drawGrid();
 	});
+
+	function modifyTool(tool, player, bool) {
+		console.log('modifyTool', { tool, player, bool });
+		gameState.update((state) => ({
+			...state,
+			players: state.players.map((p, index) => (p.id === player.id ? { ...p, [tool]: bool } : p))
+		}));
+	}
+
+	function selectPlayerTool(selectedTool, tool, player) {
+		console.log({ tool, player });
+
+		// if (selectedTool !== tool.tool) {
+		// 	return;
+		// }
+
+		if (tool.action === 'damage' && player[tool.tool] === true) {
+			console.log('damaging', player.name + 's', tool.tool);
+
+			modifyTool(tool.tool, player, false);
+			removeLocalCardFromHand(selectedCard);
+			selectCard(null, currentPlayerDetails);
+			nextTurn();
+		} else if (tool.action === 'damage' && player[tool.tool] === false) {
+			console.log(player.name + 's', tool.tool, 'is already damaged');
+		}
+
+		if (tool.action === 'repair' && tool.tool?.includes('_or_')) {
+			const [tool1, tool2] = tool.tool.split('_or_');
+			const isTool1Damaged = player[tool1] === false;
+			const isTool2Damaged = player[tool2] === false;
+
+			const selectedToolIsDamaged = player[selectedTool] === false;
+
+			if (selectedToolIsDamaged) {
+				console.log('repairing', player.name + 's', selectedTool);
+				modifyTool(selectedTool, player, true);
+				removeLocalCardFromHand(selectedCard);
+				selectCard(null, currentPlayerDetails);
+				nextTurn();
+			} else {
+				console.log(player.name + 's', tool1, 'and', tool2, 'are already working');
+			}
+		} else if (tool.action === 'repair' && player[tool.tool] === false) {
+			console.log('repairing', player.name + 's', tool.tool);
+			modifyTool(tool.tool, player, true);
+			removeLocalCardFromHand(selectedCard);
+			selectCard(null, currentPlayerDetails);
+			nextTurn();
+		} else if (tool.action === 'repair' && player[tool.tool] === true) {
+			console.log(player.name + 's', tool.tool, 'is already working');
+		}
+	}
+
+	console.log('gameState', players);
 </script>
 
 <canvas
@@ -393,9 +486,39 @@
 					<span class="player-score">Score: {player.score}</span>
 				</div>
 				<div class="tools">
-					<div class="tool {player.pickaxe ? 'active' : ''}">⛏️</div>
-					<div class="tool {player.cart ? 'active' : ''}">🛒</div>
-					<div class="tool {player.lamp ? 'active' : ''}">🔦</div>
+					<button
+						class="tool {player.pickaxe
+							? 'working'
+							: 'damaged'} {selectedCard?.details?.tool?.includes('pickaxe')
+							? 'highlight'
+							: 'disabled'}"
+						on:click={() => selectPlayerTool('pickaxe', selectedCard?.details, player)}
+						style:disabled={!selectedCard?.details?.tool?.includes('pickaxe')}
+					>
+						⛏️
+					</button>
+					<button
+						class="tool {player.cart
+							? 'working'
+							: 'damaged'} {selectedCard?.details?.tool?.includes('cart')
+							? 'highlight'
+							: 'disabled'}"
+						on:click={() => selectPlayerTool('cart', selectedCard?.details, player)}
+						style:disabled={!selectedCard?.details?.tool?.includes('cart')}
+					>
+						🛒
+					</button>
+					<button
+						class="tool {player.lamp
+							? 'working'
+							: 'damaged'} {selectedCard?.details?.tool?.includes('lamp')
+							? 'highlight'
+							: 'disabled'}"
+						on:click={() => selectPlayerTool('lamp', selectedCard?.details, player)}
+						style:disabled={!selectedCard?.details?.tool?.includes('lamp')}
+					>
+						🔦
+					</button>
 				</div>
 			</div>
 		{/each}
@@ -451,7 +574,6 @@
 	}
 
 	.player.active {
-		background: #e0f7fa;
 		border-color: #00bcd4;
 	}
 
@@ -493,9 +615,20 @@
 		opacity: 0.5;
 	}
 
-	.tool.active {
+	.tool.working {
 		opacity: 1;
-		background: #e0f7fa;
+		/* background: #e5fae0; */
+	}
+
+	.tool.damaged {
+		opacity: 1;
+		background: #fae1e0;
+	}
+
+	.tool.highlight {
+		opacity: 1;
+		background: #e5fae0;
+		cursor: pointer;
 	}
 
 	.next-round-btn {
