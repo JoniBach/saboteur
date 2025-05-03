@@ -4,7 +4,10 @@
 	import {
 		gameState,
 		type Card,
+		type Player,
+		initializeGame,
 		placeCard,
+		rotateHand,
 		selectCard,
 		nextTurn,
 		drawCard,
@@ -12,7 +15,9 @@
 		CARD_COUNT,
 		CARD_TYPES,
 		STARTING_HAND_SIZE,
-		initializeGame
+		startNewRound,
+		checkPathAndScore,
+		ROUND_COUNT
 	} from '$lib/stores/gameState';
 
 	let canvas: HTMLCanvasElement;
@@ -24,6 +29,8 @@
 	$: players = $gameState.players;
 	$: currentPlayer = $gameState.currentPlayer;
 	$: currentPlayerHand = $gameState.players[currentPlayer - 1]?.hand || [];
+	$: currentRound = $gameState.currentRound;
+	$: roundWinner = $gameState.roundWinner;
 
 	$: playablePositions = getPlayablePositions(grid, selectedCard);
 	$: console.log('Playable positions', playablePositions);
@@ -41,27 +48,6 @@
 		newCard.e = card.w;
 		newCard.w = card.e;
 		return newCard;
-	}
-
-	function rotateHand() {
-		gameState.update((state) => {
-			const currentPlayerIndex = state.currentPlayer - 1;
-			const player = state.players[currentPlayerIndex];
-			if (!player) return state;
-
-			const rotatedHand = [...player.hand];
-			if (rotatedHand.length > 0) {
-				const lastCard = rotatedHand.pop()!;
-				rotatedHand.unshift(lastCard);
-			}
-
-			return {
-				...state,
-				players: state.players.map((p, i) =>
-					i === currentPlayerIndex ? { ...p, hand: rotatedHand } : p
-				)
-			};
-		});
 	}
 
 	function drawGrid() {
@@ -465,6 +451,13 @@
 		return playablePositions;
 	}
 
+	function handleRoundEnd() {
+		checkPathAndScore();
+		if (currentRound < ROUND_COUNT) {
+			startNewRound();
+		}
+	}
+
 	onMount(() => {
 		paper.setup(canvas);
 		paperInitialized = true;
@@ -472,21 +465,25 @@
 		// Initialize game with 4 players (or any other number from 3-10)
 		initializeGame(4);
 		fillDeck();
-
-		// Deal initial cards to all players
-		for (let i = 0; i < STARTING_HAND_SIZE; i++) {
-			players.forEach((_, playerIndex) => {
-				const drawnCard = deck.shift();
-				if (drawnCard) {
-					gameState.update((state) => ({
-						...state,
-						players: state.players.map((p, index) =>
-							index === playerIndex ? { ...p, hand: [...p.hand, drawnCard] } : p
-						)
-					}));
+		
+		// Deal initial cards to all players using the store directly
+		gameState.update(state => {
+			const updatedPlayers = state.players.map(player => {
+				const hand = [];
+				for (let i = 0; i < STARTING_HAND_SIZE; i++) {
+					const drawnCard = deck.shift();
+					if (drawnCard) {
+						hand.push(drawnCard);
+					}
 				}
+				return { ...player, hand };
 			});
-		}
+			
+			return {
+				...state,
+				players: updatedPlayers
+			};
+		});
 
 		drawGrid();
 	});
@@ -497,27 +494,69 @@
 	style="width: 100%; max-width: 1200px; height: 1000px; background: #f0f0f0;"
 ></canvas>
 
-<div class="player-tools">
-	{#each players as player, i}
-		<div class="player {currentPlayer === i + 1 ? 'active' : ''}">
-			<div class="player-info">
-				<span class="player-name">{player.name}</span>
-				<span class="player-role">{player.role}</span>
+<div class="game-info">
+	<div class="round-info">
+		<h2>Round {currentRound} of {ROUND_COUNT}</h2>
+		{#if roundWinner}
+			<div class="winner-announcement">
+				{roundWinner === 'miners' ? 'Miners' : 'Saboteurs'} win this round!
 			</div>
-			<div class="tools">
-				<div class="tool {player.pickaxe ? 'active' : ''}">⛏️</div>
-				<div class="tool {player.cart ? 'active' : ''}">🛒</div>
-				<div class="tool {player.lamp ? 'active' : ''}">🔦</div>
+		{/if}
+	</div>
+
+	<div class="player-tools">
+		{#each players as player, i}
+			<div class="player {currentPlayer === i + 1 ? 'active' : ''}">
+				<div class="player-info">
+					<span class="player-name">{player.name}</span>
+					<span class="player-role">{player.role}</span>
+					<span class="player-score">Score: {player.score}</span>
+				</div>
+				<div class="tools">
+					<div class="tool {player.pickaxe ? 'active' : ''}">⛏️</div>
+					<div class="tool {player.cart ? 'active' : ''}">🛒</div>
+					<div class="tool {player.lamp ? 'active' : ''}">🔦</div>
+				</div>
 			</div>
-		</div>
-	{/each}
+		{/each}
+	</div>
+
+	{#if roundWinner && currentRound < ROUND_COUNT}
+		<button class="next-round-btn" on:click={handleRoundEnd}>Start Next Round</button>
+	{/if}
 </div>
 
 <style>
-	.player-tools {
+	.game-info {
 		position: fixed;
 		right: 20px;
 		top: 20px;
+		display: flex;
+		flex-direction: column;
+		gap: 20px;
+	}
+
+	.round-info {
+		background: rgba(255, 255, 255, 0.9);
+		padding: 10px;
+		border-radius: 8px;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+		text-align: center;
+	}
+
+	.round-info h2 {
+		margin: 0;
+		font-size: 1.2em;
+		color: #2196f3;
+	}
+
+	.winner-announcement {
+		margin-top: 8px;
+		font-weight: bold;
+		color: #4caf50;
+	}
+
+	.player-tools {
 		background: rgba(255, 255, 255, 0.9);
 		padding: 10px;
 		border-radius: 8px;
@@ -541,6 +580,7 @@
 		justify-content: space-between;
 		align-items: center;
 		margin-bottom: 5px;
+		gap: 8px;
 	}
 
 	.player-name {
@@ -553,6 +593,12 @@
 		border-radius: 4px;
 		background: #f0f0f0;
 		text-transform: capitalize;
+	}
+
+	.player-score {
+		font-size: 0.9em;
+		color: #2196f3;
+		font-weight: bold;
 	}
 
 	.tools {
@@ -570,5 +616,20 @@
 	.tool.active {
 		opacity: 1;
 		background: #e0f7fa;
+	}
+
+	.next-round-btn {
+		padding: 10px 20px;
+		background: #2196f3;
+		color: white;
+		border: none;
+		border-radius: 4px;
+		cursor: pointer;
+		font-weight: bold;
+		transition: background-color 0.2s;
+	}
+
+	.next-round-btn:hover {
+		background: #1976d2;
 	}
 </style>
