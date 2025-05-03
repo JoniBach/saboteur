@@ -409,6 +409,23 @@
 			parent: deckGroup
 		});
 
+		players.forEach((player, index) => {
+			const playerY = deckY + (index + 1.5) * cellSize;
+			const playerCard = new paper.Path.Rectangle({
+				point: [deckX, playerY],
+				size: [cellSize, cellSize],
+				strokeColor: 'black',
+				fillColor: player.id === currentPlayer ? '#e0e0ff' : 'white'
+			});
+
+			new paper.PointText({
+				point: [deckX + cellSize + 10, playerY + cellSize/2],
+				content: player.name,
+				fillColor: player.id === currentPlayer ? 'blue' : 'black',
+				fontSize: 14
+			});
+		});
+
 		deckGroup.onClick = (event: paper.MouseEvent) => {
 			if (deck.length > 0) {
 				const newCards = drawCards(1);
