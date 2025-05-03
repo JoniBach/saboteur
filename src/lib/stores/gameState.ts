@@ -432,23 +432,19 @@ function setupInitialGrid(grid: (Card | null)[][]): void {
 	// Place cross at bottom center
 	grid[6][3] = { ...crossCard };
 
-	// Randomly place goals
-	const positions = [
+	// Fixed goal positions
+	const goalPositions = [
 		[0, 1],
 		[0, 3],
 		[0, 5]
 	];
-	const cards = [goldCard, coalCard, coalCard];
 
-	// Fisher-Yates shuffle
-	for (let i = cards.length - 1; i > 0; i--) {
-		const j = Math.floor(Math.random() * (i + 1));
-		[cards[i], cards[j]] = [cards[j], cards[i]];
-	}
+	// Randomly decide which goal is gold
+	const goldIndex = Math.floor(Math.random() * 3);
 
-	// Place shuffled cards
-	positions.forEach((pos, i) => {
-		const card = { ...cards[i] };
+	// Place goal cards
+	goalPositions.forEach((pos, index) => {
+		const card = index === goldIndex ? { ...goldCard } : { ...coalCard };
 		// Set south connection for goal cards since they're at the top
 		card.s = true;
 		grid[pos[0]][pos[1]] = card;
@@ -715,6 +711,75 @@ export function checkPathAndScore() {
 
 		return state;
 	});
+}
+
+// Helper function to check if a card can be placed at a specific position
+export function isValidCardPlacement(
+	grid: (Card | null)[][],
+	row: number,
+	col: number,
+	card: Card
+): boolean {
+	// Check if the cell is empty
+	if (grid[row][col] !== null) {
+		return false;
+	}
+
+	// Goal tile positions
+	const goalTiles = [
+		{ row: 0, col: 2, name: 'gold' },
+		{ row: 0, col: 4, name: 'gold' },
+		{ row: 0, col: 6, name: 'coal' }
+	];
+
+	// Check if this is a goal tile or adjacent to a goal tile
+	const isGoalTile = goalTiles.some((goal) => goal.row === row && goal.col === col);
+	const isAdjacentToGoal = goalTiles.some(
+		(goal) => Math.abs(goal.row - row) + Math.abs(goal.col - col) === 1
+	);
+
+	// Prevent placing cards directly on or immediately adjacent to goal tiles
+	if (isGoalTile || isAdjacentToGoal) {
+		return false;
+	}
+
+	// Check if the cell is adjacent to an existing card
+	const directions = [
+		{ dx: -1, dy: 0, oppositeProp: 's', cardProp: 'n' },
+		{ dx: 1, dy: 0, oppositeProp: 'n', cardProp: 's' },
+		{ dx: 0, dy: -1, oppositeProp: 'e', cardProp: 'w' },
+		{ dx: 0, dy: 1, oppositeProp: 'w', cardProp: 'e' }
+	];
+
+	let hasAdjacentCard = false;
+
+	for (const dir of directions) {
+		const newRow = row + dir.dx;
+		const newCol = col + dir.dy;
+
+		// Check if the adjacent cell is within grid bounds
+		if (newRow >= 0 && newRow < 7 && newCol >= 0 && newCol < 7) {
+			const adjacentCard = grid[newRow][newCol];
+
+			// If there's a card in the adjacent cell
+			if (adjacentCard) {
+				hasAdjacentCard = true;
+
+				// Check if the card connections match
+				if (!card[dir.cardProp] || !adjacentCard[dir.oppositeProp]) {
+					return false;
+				}
+			}
+		}
+	}
+
+	// Special case for start card (cross card)
+	if (row === 6 && col === 3) {
+		return true;
+	}
+
+	// Ensure the card is placed adjacent to an existing card
+	return hasAdjacentCard;
 }
 
 // Helper function to check if path connects to a destination

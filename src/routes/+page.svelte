@@ -18,7 +18,8 @@
 		startNewRound as startNewRoundFromGameState,
 		checkPathAndScore,
 		ROUND_COUNT,
-		createPathCardDeck
+		createPathCardDeck,
+		isValidCardPlacement
 	} from '$lib/stores/gameState';
 
 	let canvas: HTMLCanvasElement;
@@ -67,7 +68,7 @@
 
 				// Draw cell border with highlight for valid positions
 				const isValidPosition =
-					selectedCard && playablePositions.some((pos) => pos.row === row && pos.col === col);
+					selectedCard && isValidCardPlacement(grid, row, col, selectedCard);
 				const rect = new paper.Path.Rectangle({
 					point: [x, y],
 					size: [cellSize, cellSize],
@@ -82,9 +83,7 @@
 
 				rect.onClick = (event: paper.MouseEvent) => {
 					if (selectedCard) {
-						const isValidPosition = playablePositions.some(
-							(pos) => pos.row === row && pos.col === col
-						);
+						const isValidPosition = isValidCardPlacement(grid, row, col, selectedCard);
 						if (isValidPosition) {
 							console.log('Placing card at', row, col);
 							placeCard(row, col, selectedCard);
